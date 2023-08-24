@@ -9,13 +9,21 @@
 
 const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
-const { onDocumentWritten } = require("firebase-functions/v2/firestore");
+const serviceAccount = require('./service-account.json');
 
-// The Firebase Admin SDK to access Firestore.
-const { initializeApp } = require("firebase-admin/app");
-const { getFirestore } = require("firebase-admin/firestore");
+// The Firebase Admin SDK to access firestore.
+const admin = require("firebase-admin");
 
-initializeApp();
+const { getFirestore, Timestamp, FieldValue } = require('firebase-admin/firestore');
+
+const { setGlobalOptions } = require("firebase-functions/v2");
+setGlobalOptions({ maxInstances: 10 });
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+});
+
+const db = getFirestore();
 
 const express = require("express");
 const cors = require("cors");
@@ -26,73 +34,18 @@ app.use(express.json());
 app.use(cors());
 app.use(helmet());
 
-// const port = 9000;
 
 app.get('/', (req, res) => {
-    res.send({ message: 'Hello World!' });
+    res.send({ message: "Hello World!" });
 });
 
-app.get('/users', (req, res) => {
-    res.send({ users: [] });
-});
-
-app.get('/insertProducts', async (req, res) => {
-    try {
-        // Get the Firestore client.
-        const firestore = getFirestore();
-
-        // Create a reference to the `products` collection.
-        const productsRef = firestore.collection("products");
-
-        // Create an array of documents to insert.
-        const products = [
-            { price: 60, name: "tomato", category: "vegetable" },
-            { price: 60, name: "chilli", category: "vegetable" },
-            { price: 90, name: "Star fruit", category: "fruits" },
-        ];
-
-        // Generate 10,000 sample products
-        for (let i = 1; i <= 4000; i++) {
-            products.push({
-                price: Math.floor(Math.random() * 100) + 1,
-                name: `Product ${i}`,
-                category: i % 2 === 0 ? "vegetable" : "fruits",
-            });
-        }
-
-        // Split products into chunks of 500 each
-        const chunkSize = 500;
-        const productChunks = [];
-        for (let i = 0; i < products.length; i += chunkSize) {
-            productChunks.push(products.slice(i, i + chunkSize));
-        }
-
-        // Initialize a batch write for each chunk
-        const batchPromises = productChunks.map(async (chunk) => {
-            const batch = firestore.batch();
-            chunk.forEach((docData) => {
-                const newDocRef = productsRef.doc(); // Automatically generate a unique document ID
-                batch.set(newDocRef, docData);
-            });
-            return batch.commit();
-        });
-
-        // Commit all batch writes
-        await Promise.all(batchPromises);
-
-        // Send a response to the client.
-        res.json({ result: `Products inserted successfully.` });
-    } catch (error) {
-        console.error("Error inserting products:", error);
-        res.status(500).json({ error: "An error occurred while inserting products." });
-    }
-});
 
 app.get('/sampleProducts', async (req, res) => {
     try {
         const db = getFirestore();
-        const productsRef = db.collection('products');
-        const querySnapshot = await productsRef.where('price', '>', 90).get();
+        const productsRef = db.collection('mylist');
+        // const querySnapshot = await productsRef.where('price', '<', 60).get();
+        const querySnapshot = await productsRef.get();
 
         const products = [];
         querySnapshot.forEach((doc) => {
@@ -106,21 +59,72 @@ app.get('/sampleProducts', async (req, res) => {
     }
 });
 
-// app.post("/user", Usercontroller.registeruser);
-// app.get("/user/:id", Usercontroller.getUser);
+app.post('/fetchStoreProducts', async (req, res) => {
+    try {
+        // Check if the 'store_id' key exists in the request body
+        if (!req.body.hasOwnProperty('store_id')) {
+            return res.status(400).json({ error: "store_id field is required." });
+        }
+
+        // Extract the store_id from the request body
+        const storeReference = db.collection("stores").doc(req.body.store_id);
+
+        // Create a reference to the 'products_mvp' collection for the specific store.
+        const productsRef = db.collection("products_mvp").where("storeRef", "==", storeReference);
+
+        // Fetch the products using the query.
+        const querySnapshot = await productsRef.get();
+
+        // Use asynchronous iteration and map for optimized performance
+        const products = await Promise.all(querySnapshot.docs.map(async (doc) => {
+            const docData = doc.data();
+            return docData;
+        }));
+
+        // Send the products as JSON response.
+        res.json(products);
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).json({ error: "An error occurred while fetching products." });
+    }
+});
+
+app.post('/nearbyStoreProducts', async (req, res) => {
+    try {
+        // Check if the 'store_id' key exists in the request body
+        if (!req.body.hasOwnProperty('store_id')) {
+            return res.status(400).json({ error: "store_id field is required." });
+        }
+
+        // Extract the store_id from the request body
+        const storeReference = db.collection("stores").doc(req.body.store_id);
+
+        // Create a reference to the 'products_mvp' collection for the specific store.
+        const productsRef = db.collection("products_mvp").where("storeRef", "==", storeReference);
+
+        // Fetch the products using the query.
+        const querySnapshot = await productsRef.get();
+
+        // Use asynchronous iteration and map for optimized performance
+        const products = await Promise.all(querySnapshot.docs.map(async (doc) => {
+            const docData = doc.data();
+            return docData;
+        }));
+
+        // Send the products as JSON response.
+        res.json(products);
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).json({ error: "An error occurred while fetching products." });
+    }
+});
+
+
+// const port = 3000;
 
 // app.listen(port, () => {
 //     console.log(`Example app listening on port ${port}`);
 // });
 
+
 exports.api = onRequest(app)
-
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
-
-/* exports.helloWorld = onRequest((request, response) => {
-
-    logger.info("Hello logs!", { structuredData: true });
-    response.send({ message: "Hello from Firebase!" });
-    db.collection('functions').get();
-}); */
