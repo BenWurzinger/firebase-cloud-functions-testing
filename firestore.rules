@@ -1,0 +1,287 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /bReciepts/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    match /bquantity/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+
+    match /quantity/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+
+    match /storesGroups/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+
+    match /departments/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+
+    match /department/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+
+    // Allow admins to read and write all documents
+    match /{document=**} {
+      allow read, write: if hasAnyRole(["ADMIN", "OWNER"]);
+    }
+
+    // Rowy: Allow signed in users to read Rowy configuration and admins to write
+    match /_rowy_/{docId} {
+      allow read: if request.auth.token.roles.size() > 0;
+      allow write: if hasAnyRole(["ADMIN", "OWNER"]);
+    	match /{document=**} {
+        allow read: if request.auth.token.roles.size() > 0;
+        allow write: if hasAnyRole(["ADMIN", "OWNER"]);
+      }
+      match /schema/{tableId} {
+        allow update: if canModify(tableId,'pc')
+        match /{document=**} {allow read,write: if canModify(tableId,'pc')}
+      }
+       match /groupSchema/{tableId} {
+        allow update: if canModify(tableId,'cg')
+        match /{document=**} {allow read,write: if canModify(tableId,'cg')}
+      }
+    	function canModify(tableId,tableType) {
+      	return hasAnyRole(get(/databases/$(database)/documents/_rowy_/settings)
+        .data.tablesSettings[tableType][tableId].modifiableBy)
+	   	}
+    }
+    // Rowy: Allow users to edit their settings
+    match /_rowy_/userManagement/users/{userId} {
+      allow get, update, delete: if isDocOwner(userId);
+      allow create: if request.auth.token.roles.size() > 0;
+    }
+    // Rowy: Allow public to read public Rowy configuration
+    match /_rowy_/publicSettings {
+      allow get: if true;
+    }
+
+    // Rowy: Utility functions
+    function isDocOwner(docId) {
+      return request.auth != null && (request.auth.uid == resource.id || request.auth.uid == docId);
+    }
+    function hasAnyRole(roles) {
+      return request.auth != null && request.auth.token.roles.hasAny(roles);
+    }
+
+    match /genericName/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+
+    match /products/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+    
+     match /products_mvp/{document} {
+      allow read, write, create, delete: if true;
+    }
+     
+
+    // Allow read access to the products_clone collection
+    match /products_clone/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+      
+    // Allow write access to the prices subcollection within the products_clone document
+      match  /prices/{priceId} {
+        allow read, write, create, delete: if true;
+      }
+
+    }
+    
+    match /{document=**}/prices/{priceId} {
+      allow read, write;
+    }
+    
+    
+      // Allow read access to the products_clone collection
+    match /stores_clone/{document} {
+   		allow read, write, create, delete: if true;
+      
+    // Allow write access to the prices subcollection within the products_clone document
+      match  /product/{productId} {
+        allow read, write, create, delete: if true;
+      }
+
+    }
+    
+    match /{document=**}/product/{productId} {
+      allow read, write;
+    }
+     match /locations/{document} {
+      allow read, write;
+    }
+    match /ranked_store_products/{document} {
+      allow read, write;
+    }
+    
+   
+ //   // Allow read access to the prices subcollection within the products_clone collection
+ //    match /products_clone/{document}/prices/{priceId} {
+ //      allow read, write, create, delete: if true;
+ //    }
+ 
+ // // Allow read access to the prices subcollection within the products_clone collection
+ //    match /prices/{document} {
+ //      allow read, write, create, delete: if true;
+ //    }
+
+ 
+ 
+//     match /products_clone_new/{document} {
+//       allow create: if true;
+//       allow read: if true;
+//       allow write: if true;
+//       allow delete: if true;
+      
+//      // Allow write access to the prices subcollection within the products_clone document
+//       match  /prices/{priceId} {
+//          allow read, write, create, delete: if true;
+//       }
+
+//     }
+   
+
+
+    match /{path=**}/genericName/{document} {
+      allow read: if true;
+    }
+
+
+    match /productsinML/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+
+    // match /price/{document} {
+    //   allow create: if true;
+    //   allow read: if true;
+    //   allow write: if true;
+    //   allow delete: if true;
+    // }
+
+    match /productsinList/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+
+    // match /users/{document} {
+    //   allow create: if request.auth.uid == request.resource.data.email;
+    //   allow read: if request.auth.uid == document;
+    //   allow write: if request.auth.uid == document;
+    //   allow delete: if false;
+    // }
+    
+    match /users/{document} {
+      allow create: if request.auth.uid == request.resource.data.email;
+      allow read: if true;
+      allow write: if request.auth.uid == document;
+      allow delete: if false;
+    }
+
+    match /stores/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+    
+     
+    match /favorites/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+
+    match /mylist/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+      
+         // Allow write access to the prices subcollection within the products_clone document
+      match  /user_product_list/{user_product_list_id} {
+         allow read, write, create, delete: if true;
+      }
+    }
+    
+    match /preloaded_default/{document} {
+     allow read, write, create, delete: if true;
+      
+     // Allow write access to the prices subcollection within the products_clone document
+      match  /preloaded_product_list/{preloaded_product_list_id} {
+         allow read, write, create, delete: if true;
+      }
+    }
+    
+    match /zipcodes/{document}{
+    allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+    
+   match /districts/{document}{
+    allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+    
+    match /states/{document}{
+    allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+    
+    match /receipt/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+    match /preloaded_default/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if true;
+    }
+  }
+}

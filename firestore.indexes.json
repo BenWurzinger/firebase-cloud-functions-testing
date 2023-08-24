@@ -1,0 +1,326 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "mylist",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "usersRef",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "departmentRef",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "price",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productRef",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "price",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "prices",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "price",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "storeName",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "bstoreRef",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "bmyListRef",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "Existence",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "genericNameRef",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "departament",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "genericNameRef",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "department",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "genericNameRef",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "departmentRef",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products_clone",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "idStore",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_exist",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products_clone",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_exist",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products_mvp",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "department_name",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "genericNames",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_exist",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "measure",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "storeRef",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "price",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products_mvp",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "genericNames",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "department_name",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "is_exist",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "measure",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "storeRef",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "price",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products_mvp",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "genericNames",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "is_exist",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "storeRef",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products_mvp",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "is_exist",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "storeRef",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "prices",
+      "fieldPath": "idStore",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "prices",
+      "fieldPath": "storeName",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "product",
+      "fieldPath": "storeRef",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "products",
+      "fieldPath": "name",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        }
+      ]
+    }
+  ]
+}
