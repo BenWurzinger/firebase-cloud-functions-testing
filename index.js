@@ -7,23 +7,21 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-const { onRequest } = require("firebase-functions/v2/https");
+const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
-const serviceAccount = require('./service-account.json');
+const storeProducts = require("./src/store_products");
+const searchProducts = require("./src/search_products");
+
 // const test = require("./sample.ts").default;
 
 
 // The Firebase Admin SDK to access firestore.
-const admin = require("firebase-admin");
+// const admin = require("firebase-admin");
 
-const { getFirestore, Timestamp, FieldValue } = require('firebase-admin/firestore');
+const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
 
-const { setGlobalOptions } = require("firebase-functions/v2");
-setGlobalOptions({ maxInstances: 10 });
 
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-});
+// initializeApp();
 
 const db = getFirestore();
 
@@ -38,7 +36,7 @@ app.use(helmet());
 
 
 app.get('/', (req, res) => {
-    res.send({ message: "Hello World!" });
+    res.send({message: "Hello World!"});
 });
 
 
@@ -61,202 +59,17 @@ app.get('/sampleProducts', async (req, res) => {
     }
 });
 
-app.post('/fetchStoreProducts', async (req, res) => {
-    try {
-        // Check if the 'store_id' key exists in the request body
-        if (!req.body.hasOwnProperty('store_id')) {
-            return res.status(400).json({ error: "store_id field is required." });
-        }
-
-        // Extract the store_id from the request body
-        const storeReference = db.collection("stores").doc(req.body.store_id);
-
-        // Create a reference to the 'products_mvp' collection for the specific store.
-        const productsRef = db.collection("products_mvp").where("storeRef", "==", storeReference);
-
-        // Fetch the products using the query.
-        const querySnapshot = await productsRef.get();
-
-        // Use asynchronous iteration and map for optimized performance
-        const products = await Promise.all(querySnapshot.docs.map(async (doc) => {
-            const docData = doc.data();
-            return docData;
-        }));
-
-        // Send the products as JSON response.
-        res.json(products);
-    } catch (error) {
-        console.error("Error fetching products:", error);
-        res.status(500).json({ error: "An error occurred while fetching products." });
-    }
-});
-
-app.post('/nearbyStoreProducts', async (req, res) => {
-    try {
-        // Check if the 'store_id' key exists in the request body
-        if (!req.body.hasOwnProperty('store_id')) {
-            return res.status(400).json({ error: "store_id field is required." });
-        }
-
-        // Extract the store_id from the request body
-        const storeReference = db.collection("stores").doc(req.body.store_id);
-
-        // Create a reference to the 'products_mvp' collection for the specific store.
-        const productsRef = db.collection("products_mvp").where("storeRef", "==", storeReference);
-
-        // Fetch the products using the query.
-        const querySnapshot = await productsRef.get();
-
-        // Use asynchronous iteration and map for optimized performance
-        const products = await Promise.all(querySnapshot.docs.map(async (doc) => {
-            const docData = doc.data();
-            return docData;
-        }));
-
-        // Send the products as JSON response.
-        res.json(products);
-    } catch (error) {
-        console.error("Error fetching products:", error);
-        res.status(500).json({ error: "An error occurred while fetching products." });
-    }
-});
-
-app.post('/searchProducts', async (req, res) => {
-    try {
-        // Check if the 'store_id' key exists in the request body
-        if (!req.body.hasOwnProperty('store_ids') && !req.body.hasOwnProperty('query')) {
-            return res.status(400).json({ error: "store_id and query field is required." });
-        }
-
-        if (req.body.store_ids.length <= 0) {
-            return res.status(400).json({ error: "Store_ids should not be null." });
-        }
-
-        // Get nearby stores 
-        let query = req.body.query ? "tomate" : query.toLowerCase();
-
-        const nearbyStoresIds = req.body.store_ids;
-        let searchResults = [];
-        console.log(nearbyStoresIds);
-        const nearbyStoreRefs = [];
-
-        nearbyStoresIds.forEach(id => {
-            nearbyStoreRefs.push(db.collection('stores').doc(id));
-        });
-
-        // console.log(nearbyStoresIds, 'nearbyStoreRefs', nearbyStoreRefs);
-
-        const nearbyStoreRefsSnapshots = await db
-            .collection('products_mvp')
-            .where('storeRef', 'in', nearbyStoreRefs)
-            .where('is_exist', '==', true)
-            .get();
-
-        for (const value of nearbyStoreRefsSnapshots.docs) {
-            const valueData = value.data();
-
-            try {
-                // console.log(`ADD PRODUCT DATA = ${JSON.stringify(valueData)}`);
-
-                const product = createProductFromData(valueData);
-
-                const hasGenericNameMatched = product.genericNames.some(genericName =>
-                    genericName.toLowerCase().includes(query)
-                );
-
-                if (
-                    hasGenericNameMatched ||
-                    product.name.toLowerCase().includes(query)
-                ) {
-                    searchResults.push(product);
-                }
-            } catch (e) {
-                console.log(`Error processing value: ${JSON.stringify(valueData)}`);
-                console.log(`Error details: ${e}`);
-            }
-        }
-
-        const filteredList = [];
-
-        if (searchResults.length > 0) {
-            let selectedProduct = searchResults[0];
-            let minPrice = parseFloat(selectedProduct.minPrice);
-            let maxPrice = parseFloat(selectedProduct.minPrice);
-
-            for (let i = 1; i < searchResults.length; i++) {
-                const product = searchResults[i];
-
-                const isSimilarProduct = selectedProduct.measure === product.measure
-                    && selectedProduct.department === product.department
-                    && product.genericNames.every(name =>
-                        selectedProduct.genericNames.includes(name)
-                    );
-
-                if (isSimilarProduct) {
-                    const productMinPrice = parseFloat(product.minPrice);
-                    minPrice = Math.min(minPrice, productMinPrice);
-                    maxPrice = Math.max(maxPrice, productMinPrice);
-                } else {
-                    const filteredProduct = {
-                        ...selectedProduct,
-                        minPrice: minPrice.toString(),
-                        maxPrice: maxPrice.toString()
-                    };
-                    filteredList.push(filteredProduct);
-
-                    selectedProduct = product;
-                    minPrice = parseFloat(product.minPrice);
-                    maxPrice = parseFloat(product.minPrice);
-                }
-            }
-
-            const filteredProduct = {
-                ...selectedProduct,
-                minPrice: minPrice.toString(),
-                maxPrice: maxPrice.toString()
-            };
-            filteredList.push(filteredProduct);
-        }
-
-        console.log('Filter List:', JSON.stringify(filteredList));
-        res.json(filteredList);
-
-
-    } catch (error) {
-        console.error("Error fetching products:", error);
-        res.status(500).json({ error: "An error occurred while fetching products." });
-    }
-});
-
-function createProductFromData(data) {
-    const genericNames = data.genericNames || [];
-    const product = {};
-
-    for (const key in data) {
-        if (Object.prototype.hasOwnProperty.call(data, key)) {
-            product[key] = data[key];
-        }
-    }
-
-    product.genericNames = genericNames;
-    product.minPrice = (data.price !== undefined) ? data.price.toString() : '0';
-    product.maxPrice = `${(data.storeRef && data.storeRef.id) || ''} - ${genericNames.join(', ')}`;
-
-    return product;
-}
-
-
-
-// app.use('/test', test);
+app.post('/fetchStoreProducts', storeProducts.storeProducts);
+app.post('/searchProducts', searchProducts.searchProducts);
 
 
 app.post('/storeRanking', async (req, res) => {
     if (!req.body.hasOwnProperty('store_ids') && !req.body.hasOwnProperty('list_id')) {
-        return res.status(400).json({ error: "store_id and list_id field is required." });
+        return res.status(400).json({error: "store_id and list_id field is required."});
     }
 
     if (req.body.store_ids.length <= 0) {
-        return res.status(400).json({ error: "store_ids should not be empty." });
+        return res.status(400).json({error: "store_ids should not be empty."});
     }
 
 
@@ -319,7 +132,7 @@ app.post('/storeRanking', async (req, res) => {
                     matchingProductCounts.set(storeRef, (matchingProductCounts.get(storeRef)) + 1);
 
 
-                    (productInListMap[storeRef] || []).push({ 'product': product, 'quantity': quantity });
+                    (productInListMap[storeRef] || []).push({'product': product, 'quantity': quantity});
 
                     continue;
                 }
@@ -336,7 +149,7 @@ app.post('/storeRanking', async (req, res) => {
                     if (!missingProductMap.has(storeRef)) {
                         missingProductMap.set(storeRef, []);
                     }
-                    missingProductMap.get(storeRef).push({ 'product': product, 'quantity': quantity });
+                    missingProductMap.get(storeRef).push({'product': product, 'quantity': quantity});
                 } else if (productInStore.productId === productId) {
                     const price = parseFloat(productInStore.minPrice);
 
@@ -345,7 +158,7 @@ app.post('/storeRanking', async (req, res) => {
                     if (!productInListMap.has(storeRef)) {
                         productInListMap.set(storeRef, []);
                     }
-                    productInListMap.get(storeRef).push({ 'product': productInStore, 'quantity': quantity });
+                    productInListMap.get(storeRef).push({'product': productInStore, 'quantity': quantity});
                 } else {
                     const price = parseFloat(productInStore.minPrice);
 
@@ -354,7 +167,7 @@ app.post('/storeRanking', async (req, res) => {
                     if (!similarProductMap.has(storeRef)) {
                         similarProductMap.set(storeRef, []);
                     }
-                    similarProductMap.get(storeRef).push({ 'product': productInStore, 'quantity': quantity });
+                    similarProductMap.get(storeRef).push({'product': productInStore, 'quantity': quantity});
                 }
             }
         }
@@ -383,15 +196,20 @@ app.post('/storeRanking', async (req, res) => {
         });
 
 
-        res.json({ "stores": stores, "matching": productInListMap, "similar": similarProductMap, "missing": missingProductMap });
+        res.json({
+            "stores": stores,
+            "matching": productInListMap,
+            "similar": similarProductMap,
+            "missing": missingProductMap
+        });
 
     } catch (error) {
         console.error("Error fetching products:", error);
-        res.status(500).json({ error: "An error occurred while fetching products." });
+        res.status(500).json({error: "An error occurred while fetching products."});
     }
 });
 
-async function getStoreFromPath({ path, totalPrice, matchingPercentage }) {
+async function getStoreFromPath({path, totalPrice, matchingPercentage}) {
     const storeSnapshot = await path.get();
     const location = storeSnapshot['location']; // Assuming location is a GeoPoint object in Firestore
 
@@ -416,11 +234,11 @@ async function getStoreFromPath({ path, totalPrice, matchingPercentage }) {
 
 
 async function getSimilarProductFromList({
-    product,
-    storeProducts,
-    storeRef,
-    matchingProductCounts
-}) {
+                                             product,
+                                             storeProducts,
+                                             storeRef,
+                                             matchingProductCounts
+                                         }) {
     const productId = product.productId;
     const genericNames = [...product.genericNames];
     const measure = product.measure;
@@ -533,12 +351,11 @@ const formatProductData = (data, productSnapshot) => {
 };
 
 
+// const port = 3000;
+//
+// app.listen(port, () => {
+//     console.log(`Example app listening on port ${port}`);
+// });
 
-const port = 3000;
 
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
-});
-
-
-// exports.api = onRequest(app);
+exports.api = onRequest(app);
