@@ -7,8 +7,8 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-const {onRequest} = require("firebase-functions/v2/https");
-const logger = require("firebase-functions/logger");
+// const {onRequest} = require("firebase-functions/v2/https");
+// const logger = require("firebase-functions/logger");
 const storeProducts = require("./src/store_products");
 const searchProducts = require("./src/search_products");
 const storeRanking = require("./src/store_ranking");
@@ -16,6 +16,7 @@ const storeRanking = require("./src/store_ranking");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const { getFirestore } = require("firebase-admin/firestore");
 
 const app = express();
 app.use(express.json());

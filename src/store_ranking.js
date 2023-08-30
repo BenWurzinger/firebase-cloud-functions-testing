@@ -44,7 +44,6 @@ const storeRanking = async (req, res) => {
             Promise.all(productRefs.map(productRef => productRef.get()))
         ]);
 
-        // console.log("storeProducts", storeProducts);
 
         const userProducts = userProductsSnapshot.map(productSnapshot =>
             formatProductData(productSnapshot.data(), productSnapshot)
@@ -77,7 +76,7 @@ const storeRanking = async (req, res) => {
                     matchingProductCounts.set(storeRef, (matchingProductCounts.get(storeRef) || 0) + 1);
 
 
-                    (productInListMap[storeRef] || []).push({ 'product': product, 'quantity': quantity });
+                    (productInListMap.get(storeRef) || []).push({ 'product': product, 'quantity': quantity });
 
                     continue;
                 }
@@ -91,26 +90,24 @@ const storeRanking = async (req, res) => {
 
 
                 if (productInStore === null) {
-                    missingProductMap.set(storeRef, (missingProductMap.get(storeRef) || []).push({ 'product': product, 'quantity': quantity }));
+                    const existingMissingProducts = missingProductMap.get(storeRef) || [];
+                    existingMissingProducts.push({ 'product': product, 'quantity': quantity });
+                    missingProductMap.set(storeRef, existingMissingProducts);
 
                 } else if (productInStore.productId === productId) {
                     const price = parseFloat(productInStore.price);
 
                     storeTotal.set(storeRef, (storeTotal.get(storeRef) || 0) + (quantity * price));
 
-                    if (!productInListMap.has(storeRef)) {
-                        productInListMap.set(storeRef, []);
-                    }
-                    productInListMap.get(storeRef).push({ 'product': productInStore, 'quantity': quantity });
+                    const existingProductsInList = productInListMap.get(storeRef) || [];
+                    existingProductsInList.push({ 'product': productInStore, 'quantity': quantity });
+                    productInListMap.set(storeRef, existingProductsInList);
                 } else {
                     const price = parseFloat(productInStore.price);
-
                     storeTotal.set(storeRef, (storeTotal.get(storeRef) || 0) + (quantity * price));
-
-                    if (!similarProductMap.has(storeRef)) {
-                        similarProductMap.set(storeRef, []);
-                    }
-                    similarProductMap.get(storeRef).push({ 'product': productInStore, 'quantity': quantity });
+                    const existingSimilarProducts = similarProductMap.get(storeRef) || [];
+                    existingSimilarProducts.push({ 'product': productInStore, 'quantity': quantity });
+                    similarProductMap.set(storeRef, existingSimilarProducts);
                 }
             }
         }
@@ -122,7 +119,7 @@ const storeRanking = async (req, res) => {
             const matchingProductCount = matchingProductCounts.get(storeRef) || 0;
             const matchingPercentage = (matchingProductCount / productListSnapshot.size) * 100;
 
-            console.log("Percenatge", storeRef.path,matchingProductCount, productListSnapshot.size);
+            // console.log("Percenatge", storeRef.path,matchingProductCount, productListSnapshot.size);
 
 
             const store = await getStoreFromPath({
@@ -133,19 +130,25 @@ const storeRanking = async (req, res) => {
             stores.push(store);
         }
 
-        // console.log("storeTotal", JSON.stringify(Object.entries(storeTotal)));
 
         stores.sort((a, b) => {
             return b.matchingPercentage - a.matchingPercentage;
         });
 
-        console.log("missingProductMap", missingProductMap);
-
         res.json({
             "stores": stores,
-            "matching": productInListMap,
-            "similar": similarProductMap,
-            "missing": missingProductMap
+            "matching": Array.from(productInListMap.entries()).map(([storeRef, products]) => ({
+                storeRef: storeRef.path,
+                products: products,
+            })),
+            "missing": Array.from(missingProductMap.entries()).map(([storeRef, products]) => ({
+                storeRef: storeRef.path,
+                products: products,
+            })),
+            "similar": Array.from(similarProductMap.entries()).map(([storeRef, products]) => ({
+                storeRef: storeRef.path,
+                products: products,
+            })),
         });
 
     } catch (error) {
@@ -153,7 +156,6 @@ const storeRanking = async (req, res) => {
         res.status(500).json({ error: "An error occurred while fetching products." });
     }
 };
-
 
 async function getStoreFromPath({ path, totalPrice, matchingPercentage }) {
     const storeSnapshot = await path.get();
@@ -178,6 +180,7 @@ async function getStoreFromPath({ path, totalPrice, matchingPercentage }) {
     // console.log("Latitude:", latitude);
     // console.log("Longitude:", longitude);
 
+
     return {
         // storeRef: path,
         logo: data['logo'],
@@ -185,12 +188,9 @@ async function getStoreFromPath({ path, totalPrice, matchingPercentage }) {
         totalPrice: totalPrice,
         matchingPercentage: Math.floor(matchingPercentage),
         distance: 5,
-        // lat: location.GeoPoint._latitude,
-        // lon: location.GeoPoint._longitude,
         address: data['adress'] // Fix typo to 'address' if it's changed in the database
     };
 }
-
 
 async function getSimilarProductFromList({
     product,
@@ -203,12 +203,6 @@ async function getSimilarProductFromList({
     const measure = product.measure;
     const department = product.department;
     const actualStoreRef = db.doc(storeRef);
-
-    // console.log('Searching for similar product:');
-    // console.log('Product ID:', productId);
-    // console.log('Generic Names:', genericNames);
-    // console.log('Measure:', measure);
-    // console.log('Department:', department);
 
     const exactProduct = storeProducts.find(
         element =>
@@ -261,11 +255,11 @@ async function getSimilarProductFromList({
     }
 
     if (bestMatchPercentage <= 0.65) {
-        console.log(`Similar product found BUT with ${bestMatchPercentage * 100}%:`);
+        // console.log(`Similar product found BUT with ${bestMatchPercentage * 100}%:`);
         return null;
     }
 
-    console.log('bestMatchPercentage == ',bestMatchPercentage);
+    // console.log('bestMatchPercentage == ',bestMatchPercentage);
     matchingProductCounts[actualStoreRef] =
         (matchingProductCounts[actualStoreRef] || 0) + bestMatchPercentage;
 
