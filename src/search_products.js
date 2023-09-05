@@ -6,13 +6,19 @@ const searchProducts = async (req, res) => {
         if (!req.body.hasOwnProperty('store_ids') && !req.body.hasOwnProperty('query')) {
             return res.status(400).json({error: "store_id and query field is required."});
         }
-
-        if (req.body.store_ids.length <= 0) {
-            return res.status(400).json({error: "store_ids should not be empty."});
+        // Check if query is empty
+        if (req.body.query.trim() === "") {
+            return res.status(400).json({error: "query field should not be empty."});
         }
 
+        // Check if 'store_ids' is an empty array
+        if (!Array.isArray(req.body.store_ids) || req.body.store_ids.length === 0) {
+            return res.status(400).json({error: "'store_ids' should be a non-empty array."});
+        }
+
+
         // Get nearby stores
-        let query = req.body.query ? "tomate" : req.body.query.toLowerCase();
+        let query = req.body.query.trim().toLowerCase();
 
         const nearbyStoresIds = req.body.store_ids;
         const searchResults = [];
@@ -38,9 +44,11 @@ const searchProducts = async (req, res) => {
 
 
                 // todo this + push inside Search Result is not accurate.
-                const hasGenericNameMatched = product.genericNames.some(genericName =>
-                    genericName.toLowerCase().includes(query)
-                );
+                const hasGenericNameMatched = product.genericNames.some((genericName) => {
+                    const words = query.toLowerCase().split(" ");
+                    return words.some((word) => word === genericName.toLowerCase());
+                });
+
 
                 if (
                     hasGenericNameMatched ||
@@ -54,58 +62,46 @@ const searchProducts = async (req, res) => {
             }
         }
 
-        const filteredList = [];
+        const productGroups = {};
 
-        // todo Sort it on the basis of generic names.
         if (searchResults.length > 0) {
-            let selectedProduct = searchResults[0];
-            // console.log(`SELECTED PRODUCT DATA = ${JSON.stringify(selectedProduct)}`);
-
-            let minPrice = parseFloat(selectedProduct.price);
-            let maxPrice = parseFloat(selectedProduct.price);
-
-            for (let i = 1; i < searchResults.length; i++) {
+            for (let i = 0; i < searchResults.length; i++) {
                 const product = searchResults[i];
+                const key = `${product.measure}-${product.department}-${product.genericNames.join('-')}`;
 
-                const isSimilarProduct = selectedProduct.measure === product.measure
-                    && selectedProduct.department === product.department
-                    && product.genericNames.every(name =>
-                        selectedProduct.genericNames.includes(name)
-                    );
-
-                if (isSimilarProduct) {
-                    const productMinPrice = parseFloat(product.price);
-                    minPrice = Math.min(minPrice, productMinPrice);
-                    maxPrice = Math.max(maxPrice, productMinPrice);
-
-                    console.log(`SELECTED PRODUCT IF = ${minPrice} and ${maxPrice}`);
-
+                if (!productGroups[key]) {
+                    productGroups[key] = [product];
                 } else {
-                    const filteredProduct = {
-                        ...selectedProduct,
-                        minPrice: minPrice,
-                        maxPrice: maxPrice
-                    };
-                    filteredList.push(filteredProduct);
-
-                    selectedProduct = product;
-                    minPrice = parseFloat(product.price);
-                    maxPrice = parseFloat(product.price);
-
-                    console.log(`SELECTED PRODUCT ELSE = ${minPrice} and ${maxPrice}`);
-
+                    productGroups[key].push(product);
                 }
             }
-
-            const filteredProduct = {
-                ...selectedProduct,
-                minPrice: minPrice,
-                maxPrice: maxPrice
-            };
-            filteredList.push(filteredProduct);
         }
 
-        // console.log('Filter List:', JSON.stringify(filteredList));
+        const filteredList = [];
+
+        for (const key in productGroups) {
+            if (productGroups.hasOwnProperty(key)) {
+                const group = productGroups[key];
+
+                let minPrice = parseFloat(group[0].price);
+                let maxPrice = parseFloat(group[0].price);
+
+                for (let i = 1; i < group.length; i++) {
+                    const product = group[i];
+                    const productMinPrice = parseFloat(product.price);
+
+                    minPrice = Math.min(minPrice, productMinPrice);
+                    maxPrice = Math.max(maxPrice, productMinPrice);
+                }
+
+                const filteredProduct = group[0]; // You can choose any product in the group as a base.
+                filteredProduct.minPrice = minPrice;
+                filteredProduct.maxPrice = maxPrice;
+
+                filteredList.push(filteredProduct);
+            }
+        }
+
         res.json(filteredList);
 
 
