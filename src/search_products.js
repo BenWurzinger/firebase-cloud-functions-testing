@@ -4,7 +4,7 @@ const searchProducts = async (req, res) => {
     try {
         // Check if the 'store_id' key exists in the request body
         if (!req.body.hasOwnProperty('store_ids') && !req.body.hasOwnProperty('query')) {
-            return res.status(400).json({error: "store_id and query field is required."});
+            return res.status(400).json({error: "store_ids and query field is required."});
         }
         // Check if query is empty
         if (req.body.query.trim() === "") {
@@ -13,7 +13,7 @@ const searchProducts = async (req, res) => {
 
         // Check if 'store_ids' is an empty array
         if (!Array.isArray(req.body.store_ids) || req.body.store_ids.length === 0) {
-            return res.status(400).json({error: "'store_ids' should be a non-empty array."});
+            return res.status(400).json({error: "store_ids should be a non-empty array."});
         }
 
 
@@ -39,7 +39,7 @@ const searchProducts = async (req, res) => {
             try {
                 // console.log(`ADD PRODUCT DATA = ${JSON.stringify(valueData)}`);
 
-                const product = createProductFromData(valueData);
+                const product = createProductFromData(valueData, value.id);
                 // console.log(`ADD PRODUCT DATA = ${JSON.stringify(product)}`);
 
 
@@ -111,7 +111,7 @@ const searchProducts = async (req, res) => {
     }
 };
 
-function createProductFromData(data) {
+function createProductFromData(data, docId) {
     const genericNames = data.genericNames || [];
     const product = {};
 
@@ -122,6 +122,9 @@ function createProductFromData(data) {
     }
 
     product.genericNames = genericNames;
+    product.storeRef = data.storeRef.path.toString();
+    product.departmentRef = data.departmentRef.path.toString();
+    product.productRef = db.collection('products_mvp').doc(docId).id.toString();
     product.price = (data.price !== undefined) ? data.price : 0.0;
     // product.minPrice = (data.price !== undefined) ? data.price.toString() : '0';
     // product.maxPrice = `${(data.storeRef && data.storeRef.id) || ''} - ${genericNames.join(', ')}`;
